@@ -57,6 +57,29 @@ class Sparsifier:
             Re.append(re)
 
         self.Re = Re
+        
+    def Chebyshev_Resistances(self):
+        self.G.estimate_lmax()
+        def inv_sqrt(x):
+            if x == 0:
+                return 0
+            else:
+                return 1/np.sqrt(x)
+            
+        inv_sqrt_filter = pygsp.filters.Filter(self.G, lambda x : [inv_sqrt(z) for z in x])
+        Z = inv_sqrt_filter.filter(np.eye(self.n), method = 'chebyshev')
+        self.Z = sp.csr_matrix(Z)
+        
+    def Exact_Resistances(self):
+        def inv_sqrt(x):
+            if x == 0:
+                return 0
+            else:
+                return 1/np.sqrt(x)
+            
+        self.G.compute_fourier_basis()
+        Z = self.G.U@np.diag([inv_sqrt(e) for e in self.G.e])@self.G.U.T
+        self.Z = sp.csr_matrix(Z)
     
     def Sample_Edges(self):
         
@@ -76,16 +99,29 @@ class Sparsifier:
             if self.G_sparse.is_connected():
                 break
         
-    def sparsify(self, verbose = False):
+    def sparsify_by_resistances(self, verbose = False, method='Spielman-Srivastava'):
+        
+        if method == 'Spielman-Srivastava':
+            if verbose:
+                print(f"Calculating Johnson Lindenstrauss Random Projections With k = {self.k}")
+            self.Johnson_Lindenstrauss_Projection()
+            if verbose:
+                print(f"Solving for the Rows of Z")         
+            self.Find_Z()
+                
+        elif method == 'Chebyshev':
+            self.Chebyshev_Resistances()
+            
+        elif method == 'Exact':
+            self.Exact_Resistances()
+            
+        else:
+            print("Must Select Method Out of 'Spielman-Srivastava', 'Exact', 'Chebyshev' ")
+        
         if verbose:
-            print(f"Calculating Johnson Lindenstrauss Random Projections With k = {self.k}")
-        self.Johnson_Lindenstrauss_Projection()
-        if verbose:
-            print(f"Solving for the Rows of Z")         
-        self.Find_Z()
-        if verbose:
-            print(f"Calculating Pairwise Distances in JL Space for Effective Resistances")          
-        self.Approximate_ER()
+            print(f"Calculating Pairwise Distances in JL Space for Effective Resistances")   
+                  
+        self.Approximate_ER()    
         if verbose:
             print(f"Randomly Sampling {self.q} times")      
         self.Sample_Edges()
