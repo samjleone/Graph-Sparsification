@@ -92,8 +92,8 @@ class Sparsifier:
             for s in tqdm(range(self.q)):
                 e = np.random.choice(range(self.m),p=Ps)
                 w_adj = self.V[e]/(self.q*Ps[e])
-                W_sparse[self.R[e],self.C[e]] += w_adj
-                W_sparse[self.C[e],self.R[e]] += w_adj;
+                W_sparse[self.R[e],self.C[e]] += 1/2*w_adj; # correct for double counting edges to begin with
+                W_sparse[self.C[e],self.R[e]] += 1/2*w_adj; # correct for double counting edges
 
             self.G_sparse = graphs.Graph(W_sparse)
             if self.G_sparse.is_connected():
